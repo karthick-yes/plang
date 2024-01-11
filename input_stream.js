@@ -58,11 +58,55 @@ function tokenStream(string) {
      }
     return str;
     }
+    
+    function readNumber() {
+        let has_dot = false;
+        let number = readGiven(function(ch) {
+            if (ch == ".") {
+                if (has_dot) return false;
+                has_dot = true;
+                return true;
+            }
+            return checkDigit(ch);
 
-
+        }); 
+        return { type: "num", value: parseFloat(number)};
+    }
+    function readId() {
+        let id = readGiven(checkId);
+        return { type: checkKeyword(id) ? "kw" : "var", 
+                  value: id
+                };
+    }
+    function readEscaped(end) {
+        let escaped = false,
+        str = "";
+        string.next();
+        while(!string.lastValue()){
+            let ch = string.next();
+            if (escaped) {
+                str += ch;
+                escaped = false;
+            } else if (ch == "\\") {
+                escaped = true;
+            } else if (ch == end) {
+                break;
+            } else {
+                str += ch;
+            }
+        }
+        return str;
 
     }
-    
+    function readString() {
+        return { type: "str", value: readEscaped('"')};
+    }
+    function skipComment() {
+        readGiven(function(ch) {
+            return ch != "\n"
+        })
+        string.next();
+    }
 
     function readNext() {
         readGiven(check_whitespace);
@@ -85,9 +129,21 @@ function tokenStream(string) {
         value: readGiven(checkOpChar)
         };
         string.croak("can't handle character: " + ch);
+    }
+    function peek() {
+        return current || (current = readNext());
+    }
+    function next() {
+        var tok = current;
+        current = null;
+        return tok || readNext();
+    }
+    function lastValue() {
+        return peek() == null;
+    }
+
 }
-
-
+    
 
 
 
