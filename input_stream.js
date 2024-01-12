@@ -20,6 +20,7 @@ function InputStream(string) {
     };
     
 }
+/* This is the tokenStream object which has all the methods to deal with the stream of inputs */
 
 function tokenStream(string) {
      let current = null;
@@ -30,15 +31,19 @@ function tokenStream(string) {
         lastValue : lastValue,
         croak : string.croak
      };
+    //checks for keywords
     function checkKeyword(ch) {
         return keywords.indexOf(" " + ch + " ") >= 0;
     }
+    //checks for the digits using regular expression
     function checkDigit(ch) {
-        return /[0-9]/i.test(ch);
+        return /[0-9a-fA-F]/i.test(ch);
     }
+    
     function checkIdStart(ch) {
         return /[a-z]/i.test(ch);
     }
+    // checks for id , basically variables
     function checkId(ch) {
         return checkIdStart(ch) || "?!-<>=0123456789".indexOf(ch) >= 0;
     }
@@ -54,7 +59,7 @@ function tokenStream(string) {
 
     function readGiven(predicate) {
         let str = "";
-        for (; !string.eof() && predicate(string.peek()); str += string.next()) {
+        for (; !string.lastValue() && predicate(string.peek()); str += string.next()) {
      }
     return str;
     }
@@ -65,6 +70,12 @@ function tokenStream(string) {
             if (ch == ".") {
                 if (has_dot) return false;
                 has_dot = true;
+                return true;
+            } else if (/[eE]/.test(ch)) {
+                return true;
+            } else if (/[xX]/.test(ch)) {
+                return true;
+            } else if (/[0-7]/.test(ch)) {
                 return true;
             }
             return checkDigit(ch);
