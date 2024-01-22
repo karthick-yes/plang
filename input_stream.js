@@ -1,3 +1,4 @@
+"use strict";
 function InputStream(string) {
     if(!new.target) {
         return new InputStream(string);
@@ -65,24 +66,47 @@ function tokenStream(string) {
     }
     
     function readNumber() {
-        let has_dot = false;
-        let number = readGiven(function(ch) {
-            if (ch == ".") {
-                if (has_dot) return false;
-                has_dot = true;
-                return true;
-            } else if (/[eE]/.test(ch)) {
-                return true;
-            } else if (/[xX]/.test(ch)) {
-                return true;
-            } else if (/[0-7]/.test(ch)) {
+    let has_dot = false;
+    let has_exponent = false;
+    let is_hex = false;
+    let is_octal = false;
+    let number = readGiven(function(ch) {
+        if (ch === ".") {
+            if (has_dot) return false;
+            has_dot = true;
+            return true;
+        } else if (/[eE]/.test(ch)) {
+            if (has_exponent) return false;
+            has_exponent = true;
+            return true;
+        } else if (/[xX]/.test(ch) && number === '0') { // Ensure 'x' or 'X' follows '0' for hex
+            if (is_hex) return false;
+            is_hex = true;
+            return true;
+        } else if (/[0-7]/.test(ch)) {
+            if (is_octal || number === '0') { // Allow octal digits if already in octal or starts with '0'
+                is_octal = true;
                 return true;
             }
-            return checkDigit(ch);
+            return false;
+        }
+        return checkDigit(ch);
+    });
 
-        }); 
-        return { type: "num", value: parseFloat(number)};
+    let numericValue;
+    if (has_exponent) {
+        numericValue = parseFloat(number);
+    } else if (is_hex) {
+        numericValue = parseInt(number, 16);
+    } else if (is_octal) {
+        numericValue = parseInt(number, 8);
+    } else {
+        numericValue = parseFloat(number);
     }
+
+    return { type: "num", value: numericValue };
+}
+
     function readId() {
         let id = readGiven(checkId);
         return { type: checkKeyword(id) ? "kw" : "var", 
@@ -155,6 +179,24 @@ function tokenStream(string) {
 
 }
     
-
-
-
+function parseAtom() {
+    return maybeCall(function () {
+        if (checkPunc("(")) {
+            string.next();
+            let exp = parseExpression();
+            skipPunc(")");
+            return exp;
+        }
+        if (checkPunc("{")) return parseProg();
+        if (checkKeyword("aanengi")) return parseIf();
+        if (checkKeyword("seri") || checkKeyword("thettu")) return parseBoolean();
+        if (checkKeyword("chadangu")) {
+            string.next();
+            return parseLambda();
+        }
+        let tok = input.next();
+        if (tok.type == 'var' || tok.type == "num" || tok.type == "str")
+            return tok;
+        unexpected();
+    });
+}
